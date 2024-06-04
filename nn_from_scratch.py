@@ -7,6 +7,7 @@
 
 import numpy as np
 from keras.datasets import mnist
+import os
 
 
 class NeuralNetwork:
@@ -15,22 +16,25 @@ class NeuralNetwork:
     # Error used is Cross Entropy loss as this is a multi-classification problem with a softmax 
     # output activation function
     # Needs at least 1 hidden layer to work
+    # Data must be reshaped such that each row is one example
 
     def __init__(self):
 
         # Intiialise all parameters in the neural network
+        self.input_size = 0
         self.input_layer = []
         self.hidden_layers = []
         self.activations = []
         self.output_layer = []
         self.weights = []
         self.biases = []
-
+        self.rmsweights = []
+        self.rmsbiases = []
 
     def add_input_layer(self, input_size):
         
-        # Create a new array for the input layer
-        self.input_layer = np.zeros(input_size)
+        # Initialise number of neurons in input layer
+        self.input_size = input_size
     
 
     def add_hidden_layer(self, hidden_size):
@@ -40,11 +44,11 @@ class NeuralNetwork:
         self.activations.append(np.zeros(hidden_size))
         self.biases.append(np.zeros(hidden_size))
 
-        # Add weights based on layers already added to neural network
+        # Add weights based on layers already added to neural network (He intialisation for ReLU activation function)
         if len(self.hidden_layers) == 1:
-            self.weights.append(np.random.rand(input_size, len(self.input_layer)))
+            self.weights.append(np.random.rand(hidden_size, self.input_size) * np.sqrt(2 / self.input_size))
         else:
-            self.weights.append(np.random.rand(input_size, len(self.hidden_layers[-1])))
+            self.weights.append(np.random.rand(hidden_size, len(self.hidden_layers[-2])) * np.sqrt(2 / len(self.hidden_layers[-2])))
     
 
     def add_output_layer(self, output_size):
@@ -54,8 +58,8 @@ class NeuralNetwork:
         self.activations.append(np.zeros(output_size))
         self.biases.append(np.zeros(output_size))
 
-        # Add weights for final layer
-        self.weights.append(np.random.rand(output_size, len(self.hidden_layers[-1])))
+        # Add weights for final layer (Xavier initialisation for Softmax activation function)
+        self.weights.append(np.random.rand(output_size, len(self.hidden_layers[-1])) * np.sqrt(1 / len(self.hidden_layers[-1])))
 
 
     def forward_propagation(self):
@@ -64,58 +68,106 @@ class NeuralNetwork:
         for i in range(len(self.hidden_layers)):
             if i == 0:
                 self.hidden_layers[i] = np.dot(self.weights[i], self.input_layer)
-                self.activations[i] = relu(self.hidden_layers[i])
+                self.activations[i] = NeuralNetwork.relu(self.hidden_layers[i])
             else:
                 self.hidden_layers[i] = np.dot(self.weights[i], self.activations[i - 1])
-                self.activations[i] = relu(self.hidden_layers[i])
+                self.activations[i] = NeuralNetwork.relu(self.hidden_layers[i])
 
         # Calculate the final output using the Softmax activation function
-        self.output_layer = np.dot(self.weights[-1], self.activations[-1])
-        self.activations[-1] = softmax(self.output_layer)
+        self.output_layer = np.dot(self.weights[-1], self.activations[-2])
+        self.activations[-1] = NeuralNetwork.softmax(self.output_layer)
 
     
-    def backward_propagation(self, label_vector, optimiser, optimiser_params):
+    def backward_propagation(self, label_vector, batch_size, learning_rate, decay_rate):
 
         # Find the difference between model output and actual labels
         delta_output = self.activations[-1] - label_vector
 
-        # Find gradients for each of the weights and biases 
-        dW_output = np.outer(delta_output, self.activations[-2])
-        dB_output = delta_output
+        # Update weights and biases in each layer, working backwards from the output
+        for i in range(len(self.weights) - 1, -1, -1):
+            dW_list = []
+            dB_list = []
+            
+            # Consider output layer
+            if i == len(self.weights) - 1:
 
-        for i in range(len(self.hidden_layers)):
-            self.weights[-1] = 
-            self.biases[-1]
+                # Find output weights and biases gradients for each example in the batch and compute the average 
+                for j in range(batch_size):
+                    dW_list.append(np.outer(delta_output[:, j], self.activations[i - 1][:, j]))
+                    dB_list.append(delta_output[:, j])
 
+                delta_hidden = delta_output
 
+            # Consider input layer
+            elif i == 0:
+                
+                # Find input weights and biases gradients for each example in the batch and compute the average 
+                delta_hidden = np.dot(self.weights[i + 1].T, delta_hidden) * (self.hidden_layers[i] > 0)
+                for j in range(batch_size):
+                    dW_list.append(np.outer(delta_hidden[:, j], self.input_layer[:, j]))
+                    dB_list.append(delta_hidden[:, j])
 
-        # Update all layer weights and biases
-        if optimiser == 'RMSProp':
-            self.weights[-1], self.biases[-1] = rmsprop(self, delta_output, optimiser_params)
-        elif optimiser == 'Gradient Descent':
-            self.weights[-1], self.biases[-1] = gradient_descent(self, optimiser_params)            
+            # Consider hidden layers
+            else:
 
-        learning_rate = 0.05
-        delta_output = output - comp
-        layer_2_weights -= learning_rate * np.outer(delta_output, layer_1_neurons)
-        bias_2 -= learning_rate * delta_output
-        delta_hidden = np.dot(layer_2_weights.T, delta_output) * (layer_1_neurons > 0)
-        layer_1_weights -= learning_rate * np.outer(delta_hidden, test_vars)
-        bias_1 -= learning_rate * delta_hidden
+                # Find hidden weights and biases gradients for each example in the batch and compute the average 
+                delta_hidden = np.dot(self.weights[i + 1].T, delta_hidden) * (self.hidden_layers[i] > 0)
+                for j in range(batch_size):
+                    dW_list.append(np.outer(delta_hidden[:, j], self.activations[i - 1][:, j]))
+                    dB_list.append(delta_hidden[:, j])
+
+            # Update weights and biases
+            dW = np.mean(dW_list, axis = 0)
+            dB = np.mean(dB_list, axis = 0)
+            update_weights, update_biases = NeuralNetwork.rmsprop(self, i, dW, dB, learning_rate, decay_rate)
+            self.weights[i] -= update_weights
+            self.biases[i] -= update_biases
 
     
-    def rmsprop(self, optimiser_params):
+    def rmsprop(self, layer, gradient_weights, gradient_biases, learning_rate, decay_rate):
+
+        epsilon = 1e-8
+
+        # Update exponentially decaying average of squared gradients for weights and biases
+        self.rmsweights[layer] = decay_rate * self.rmsweights[layer] + (1 - decay_rate) * gradient_weights ** 2
+        self.rmsbiases[layer] = decay_rate * self.rmsbiases[layer] + (1 - decay_rate) * gradient_biases ** 2
+
+        # Update weights and biases using RMSprop update rule
+        update_weights = (learning_rate / (np.sqrt(self.rmsweights[layer]) + epsilon)) * gradient_weights
+        update_biases = (learning_rate / (np.sqrt(self.rmsbiases[layer]) + epsilon)) * gradient_biases
+
+        return update_weights, update_biases
 
 
-        pass
+    def train_network(self, training_data, labels, batch_size, learning_rate, decay_rate, epochs):
 
-    def gradient_descent(self, learning_rate):
+        # Initialise RMSProp decaying averages
+        self.rmsweights = [np.zeros_like(weights) for weights in self.weights]
+        self.rmsbiases = [np.zeros_like(biases) for biases in self.biases]
 
-        pass
+        # Iterate through each batch in the training set and repeat based on the number of epochs
+        for epoch in range(epochs):
+            
+            print("Commencing Epoch:", epoch + 1)
 
+            # Shuffle training data
+            indices = np.arange(training_data.shape[0])
+            np.random.shuffle(indices)
+            training_data = training_data[indices]
+            labels = labels[indices]
 
-    def train_network(self, training_data, labels, batch_size, optimiser, optimiser_params, epochs):
+            # Iterate through each batch
+            for batch in range(0, len(indices), batch_size):
+                x_batch = training_data[batch:batch + batch_size]
+                y_batch = labels[batch:batch + batch_size]
 
+                # Create one-hot encoded matrix representation of labels
+                y_batch_vector = np.eye(self.output_layer.shape[0])[y_batch].T
+
+                # Pass data into neural network
+                self.input_layer = x_batch.T
+                self.forward_propagation()
+                self.backward_propagation(y_batch_vector, batch_size, learning_rate, decay_rate)
         pass
 
 
@@ -143,96 +195,19 @@ class NeuralNetwork:
         return activated
 
 
-    def one_hot_encode(label, output_size):
 
-        encoded_vector = np.zeros(output_size)
-        encoded_vector[label - 1] = 1
-
-        return encoded_vector
-
-
-
-
-
-
-    def forward(self, x):
-        activations = [x]
-        for i in range(len(self.weights)):
-            x = np.dot(x, self.weights[i]) + self.biases[i]
-            if i < len(self.weights) - 1:
-                x = np.maximum(0, x)  # ReLU activation for hidden layers
-            else:
-                x = self.softmax(x)    # Softmax activation for output layer
-            activations.append(x)
-        return activations
-
-    def backward(self, x, y, learning_rate=0.01):
-        activations = self.forward(x)
-        output = activations[-1]
-
-        # Compute gradients for output layer
-        delta = output - y
-        gradients = [np.dot(activations[-2].T, delta)]
-
-        # Backpropagate through hidden layers
-        for i in range(len(self.weights)-2, -1, -1):
-            delta = np.dot(delta, self.weights[i+1].T) * (activations[i+1] > 0)  # ReLU derivative
-            gradients.insert(0, np.dot(activations[i].T, delta))
-
-        # Update weights and biases
-        for i in range(len(self.weights)):
-            self.weights[i] -= learning_rate * gradients[i]
-            self.biases[i] -= learning_rate * np.sum(gradients[i], axis=0)
-
-    def softmax(self, x):
-        exp_scores = np.exp(x - np.max(x, axis=1, keepdims=True))
-        return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
-
-# Example usage:
-# Define the neural network architecture
-input_size = 784  # MNIST images are 28x28 pixels
-hidden_sizes = [128, 64]
-output_size = 10  # 10 classes (digits 0-9)
-
-# Create the neural network
-model = NeuralNetwork(input_size, hidden_sizes, output_size)
-
-# Train the neural network
-# Assuming x_train contains input images and y_train contains corresponding labels
-# Perform forward pass, compute loss, perform backward pass, and update parameters iteratively
-for epoch in range(num_epochs):
-    for x, y in zip(x_train, y_train):
-        # Forward pass
-        activations = model.forward(x)
-        
-        # Compute loss
-        loss = compute_loss(activations[-1], y)
-        
-        # Backward pass
-        model.backward(x, y, learning_rate)
-
-
-
-
-
-
-def softmax(z):
-
-    exp_scores = np.exp(z - np.max(z, axis=0, keepdims=True))
-    softmax = exp_scores / np.sum(exp_scores, axis=0, keepdims=True)
-
-    return softmax
-
-def one_hot_encode(index, length):
-    encoded_vector = np.zeros(length)
-    encoded_vector[index - 1] = 1
-    return encoded_vector
 
 (train_X, train_y), (test_X, test_y) = mnist.load_data()
-test_vars = np.reshape(train_X[0], 784)/255
-test_vars = test_vars[176:179]
-label = 2 #train_y[0]
-n_labels = 2
+train_X = np.reshape(train_X, (train_X.shape[0], train_X.shape[1] ** 2))/255
+test_X = np.reshape(test_X, (test_X.shape[0], test_X.shape[1] ** 2))/255
+
+new = NeuralNetwork()
+new.add_input_layer(784)
+new.add_hidden_layer(256)
+new.add_hidden_layer(128)
+new.add_output_layer(10)
+new.train_network(train_X, train_y, 32, 0.01, 0.9, 10)
+
 
 # add all layers
 layer_1_size = 2
@@ -241,23 +216,22 @@ layer_2_weights = np.random.rand(n_labels, layer_1_size)
 bias_1 = np.zeros(layer_1_size)
 bias_2 = np.zeros(n_labels)
 
-# forward propagation
-layer_1 = np.dot(layer_1_weights, test_vars) + bias_1
-layer_1_neurons = np.maximum(0, layer_1)
-layer_2 = np.dot(layer_2_weights, layer_1_neurons) + bias_2
-output = softmax(layer_2)
+# # forward propagation
+# layer_1 = np.dot(layer_1_weights, test_vars) + bias_1
+# layer_1_neurons = np.maximum(0, layer_1)
+# layer_2 = np.dot(layer_2_weights, layer_1_neurons) + bias_2
+# output = softmax(layer_2)
 
-# create one hot encoded comparison set
-comp = one_hot_encode(label, n_labels)
+# # create one hot encoded comparison set
 
-# backward propagation (use cross entropy loss)
-learning_rate = 0.05
-delta_output = output - comp
-layer_2_weights -= learning_rate * np.outer(delta_output, layer_1_neurons)
-bias_2 -= learning_rate * delta_output
-delta_hidden = np.dot(layer_2_weights.T, delta_output) * (layer_1_neurons > 0)
-layer_1_weights -= learning_rate * np.outer(delta_hidden, test_vars)
-bias_1 -= learning_rate * delta_hidden
+# # backward propagation (use cross entropy loss)
+# learning_rate = 0.05
+# delta_output = output - comp
+# layer_2_weights -= learning_rate * np.outer(delta_output, layer_1_neurons)
+# bias_2 -= learning_rate * delta_output
+# delta_hidden = np.dot(layer_2_weights.T, delta_output) * (layer_1_neurons > 0)
+# layer_1_weights -= learning_rate * np.outer(delta_hidden, test_vars)
+# bias_1 -= learning_rate * delta_hidden
 
 
 
