@@ -48,7 +48,7 @@ class TflowModel:
                                              kernel_initializer = self.weights_initialiser,
                                              bias_initializer = self.biases_initialiser))
 
-    def train_model(self, x_train, y_train, batch_size, learning_rate, decay_rate, epochs):
+    def train_network(self, x_train, y_train, batch_size, learning_rate, decay_rate, epochs):
         
         # Compile the model
         optimizer = tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = decay_rate)
