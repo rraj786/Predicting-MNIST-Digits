@@ -5,45 +5,66 @@
 '''
 
 
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.utils import to_categorical
 
-# Load the MNIST dataset
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-# Preprocess the data
-x_train = x_train.reshape((x_train.shape[0], -1)).astype('float32') / 255.0
-x_test = x_test.reshape((x_test.shape[0], -1)).astype('float32') / 255.0
-y_train = to_categorical(y_train, 10)
-y_test = to_categorical(y_test, 10)
+class TflowModel:
 
-# Define the neural network architecture
-input_size = 784
-hidden_size1 = 256
-hidden_size2 = 128
-output_size = 10
+    def __init__(self):
 
-# Initialize weights and biases
-initializer = tf.initializers.GlorotUniform()
+        # Initialise weights, biases, and hidden layer sizes
+        self.weights_initialiser = tf.initializers.GlorotUniform()
+        self.biases_initialiser = "zeros"
+        self.hidden_layer_sizes = []
 
-# Define model
-model = tf.keras.Sequential([
-    tf.keras.layers.Dense(hidden_size1, activation='relu', kernel_initializer=initializer, input_shape=(input_size,)),
-    tf.keras.layers.Dense(hidden_size2, activation='relu', kernel_initializer=initializer),
-    tf.keras.layers.Dense(output_size, activation='softmax', kernel_initializer=initializer)
-])
+        # Initialise model
+        self.model = tf.keras.Sequential()
 
-# Compile the model
-optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.001, rho=0.9)
-model.compile(optimizer=optimizer,
-              loss='categorical_crossentropy',
-              metrics=['accuracy'])
+    def add_input_layer(self, input_size):
 
-# Train the model
-model.fit(x_train, y_train, epochs=10, batch_size=32, validation_data=(x_test, y_test))
+        self.input_size = input_size
 
-# Evaluate the model
-loss, accuracy = model.evaluate(x_test, y_test)
-print(f'Test accuracy: {accuracy}')
+    def add_hidden_layer(self, hidden_size):
+
+        self.hidden_layer_sizes.append(hidden_size)
+
+        # For first hidden layer, consider weights and biases between input and itself
+        if len(self.hidden_layer_sizes) == 1:
+            self.model.add(tf.keras.layers.Dense(hidden_size, activation = 'relu', 
+                                                 kernel_initializer = self.weights_initialiser, 
+                                                 bias_initializer = self.biases_initialiser, 
+                                                 input_shape = (self.input_size,)))
+        
+        # For other hidden layers
+        else:
+            self.model.add(tf.keras.layers.Dense(hidden_size, activation = 'relu', 
+                                                 kernel_initializer = self.weights_initialiser, 
+                                                 bias_initializer = self.biases_initialiser))
+    
+    def add_output_layer(self, output_size):
+
+        # Add weights and biases for output layer
+        self.model.add(tf.keras.layers.Dense(output_size, activation = 'softmax', 
+                                             kernel_initializer = self.weights_initialiser,
+                                             bias_initializer = self.biases_initialiser))
+
+    def train_model(self, x_train, y_train, batch_size, learning_rate, decay_rate, epochs):
+        
+        # Compile the model
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = decay_rate)
+        self.model.compile(optimizer = optimizer,
+                    loss='categorical_crossentropy',
+                    metrics=['accuracy'])
+
+        # Train the model
+        self.model.fit(x_train, y_train, batch_size = batch_size, epochs = epochs)
+
+        # Print model summary
+        self.model.summary()
+
+    def evaluate_model(self, x_test, y_test):
+
+        # Evaluate the model
+        loss, accuracy = self.model.evaluate(x_test, y_test)
+        print(f'Test Accuracy: {accuracy}')
+        print(f'Test Lccuracy: {loss}')
