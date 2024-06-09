@@ -24,6 +24,7 @@ class TflowModel:
 
     def add_input_layer(self, input_size):
 
+        # Initialise number of values in input layer
         self.input_size = input_size
 
     def add_hidden_layer(self, hidden_size):

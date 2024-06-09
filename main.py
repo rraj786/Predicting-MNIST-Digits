@@ -5,10 +5,9 @@
     Author: Rohit Rajagopal
 '''
 
-
-import numpy as np
-import matplotlib.pyplot as plt
 from keras.datasets import mnist
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 from nn_from_scratch import NeuralNetwork
 from tflow_model import TflowModel
@@ -67,32 +66,32 @@ model_tflow.add_output_layer(num_classes)
 model_tflow.train_network(x_train, y_train, batch_size, learning_rate, decay_rate, epochs)
 
 # Get predictions on test set using both models
-y_pred_scratch, y_pred_scratch_scores = model_scratch.predict(x_test)
-y_pred_tflow, y_pred_tflow_scores = model_tflow.predict(x_test)
+y_pred_scratch_scores, y_pred_scratch = model_scratch.predict(x_test)
+y_pred_tflow_scores, y_pred_tflow = model_tflow.predict(x_test)
 
-# Create new directories if they don't exist already to save metrics
+# Set up directories to save metrics
 curr_dir = os.getcwd()
 scratch_dir = os.path.join(curr_dir, 'metrics/scratch')
 tflow_dir = os.path.join(curr_dir, 'metrics/tflow')
+
+# Create new directories if they don't exist already
 if not os.path.exists(scratch_dir):
     os.makedirs(scratch_dir)
-elif not os.path.exists(tflow_dir):
+
+if not os.path.exists(tflow_dir):
     os.makedirs(tflow_dir)
 
 # Display and compare key metrics for both models based on predictions
 epoch_list = list(range(1, epochs + 1))
 
-training_progress(epoch_list, model_scratch.training_accuracies, model_scratch.training_losses, scratch_dir, True)
-training_progress(epoch_list, model_tflow.training_accuracies, model_tflow.training_losses, tflow_dir, True)
+training_progress(epoch_list, model_scratch.training_accuracies, model_scratch.training_losses, scratch_dir, False)
+training_progress(epoch_list, model_tflow.training_accuracies, model_tflow.training_losses, tflow_dir, False)
 
-confusion_matrix(y_test_lab, y_pred_scratch, num_classes, scratch_dir, True)
-confusion_matrix(y_test_lab, y_pred_tflow, num_classes, tflow_dir, True)
+confusion_matrix_ad(y_test_lab, y_pred_scratch, num_classes, scratch_dir, False)
+confusion_matrix_ad(y_test_lab, y_pred_tflow, num_classes, tflow_dir, False)
 
-confidence_distribution(y_pred_scratch_scores, scratch_dir, True)
-confidence_distribution(y_pred_tflow_scores, tflow_dir, True)
+confidence_distribution(y_pred_scratch_scores, scratch_dir, False)
+confidence_distribution(y_pred_tflow_scores, tflow_dir, False)
 
-accuracy_score(y_test_lab, y_pred_scratch, scratch_dir)
-accuracy_score(y_test_lab, y_pred_tflow, tflow_dir)
-
-classification_report(y_test_lab, y_pred_scratch, scratch_dir)
-classification_report(y_test_lab, y_pred_tflow, tflow_dir)
+classification_report_ad(y_test_lab, y_pred_scratch, scratch_dir)
+classification_report_ad(y_test_lab, y_pred_tflow, tflow_dir)

@@ -7,42 +7,10 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 
 
-def accuracy_score(true_labels, predicted_labels, save_dir):
-
-    """
-        Calculate the accuracy score for each class.
-
-        Inputs:
-            - true_labels: A 1D array-like of true class labels
-            - predicted_labels: A 1D array-like of predicted class labels
-            - save_dir: A string to indicate directory to save accuracies
-
-        Outputs:
-            None
-    """
-    
-    # Get unique class labels
-    classes = np.unique(true_labels)
-
-    # Calculate accuracy for each class
-    class_accuracy = {c: accuracy_score(true_labels[true_labels == c], predicted_labels[predicted_labels == c]) for c in classes}
-
-    # Display and save accuracies
-    with open(save_dir, 'w') as f:
-        header = "Accuracy for each class:"
-        print(header)
-        f.write(header + "\n")
-        for class_label, acc in class_accuracy.items():
-            line = f"Class {class_label}: {acc:.4f}"
-            print(line)
-            f.write(line + "\n")
-
-    return
-
-def classification_report(true_labels, predicted_labels, save_dir):
+def classification_report_ad(true_labels, predicted_labels, save_dir):
 
     """
         Generate a classification report of key metrics for model evaluation.
@@ -57,11 +25,11 @@ def classification_report(true_labels, predicted_labels, save_dir):
     """
 
     # Generate classification report for micro and macro-averages
-    report = classification_report(true_labels, predicted_labels)
+    report = classification_report(true_labels, predicted_labels, digits = 4)
 
     # Display and save report
     print(report)
-    with open(save_dir, 'w') as f:
+    with open(save_dir + '/classification_report.txt', 'w') as f:
         f.write(report)
 
     return
@@ -81,11 +49,11 @@ def confidence_distribution(output_probabilities, save_dir, show):
     """
 
     # Plot and save histogram
-    plt.hist(output_probabilities, bins = 100, color = 'skyblue', edgecolor = 'black')
+    plt.hist(output_probabilities, bins = 10, color = 'skyblue', edgecolor = 'black')
     plt.xlabel('Confidence Scores')
     plt.ylabel('Frequency')
     plt.title('Distribution of Confidence Scores for Predicted Labels')
-    plt.savefig(save_dir)
+    plt.savefig(save_dir + '/confidence_distribution.png')
 
     # Display plot
     if show:
@@ -93,7 +61,7 @@ def confidence_distribution(output_probabilities, save_dir, show):
 
     return
 
-def confusion_matrix(true_labels, predicted_labels, num_classes, save_dir, show):
+def confusion_matrix_ad(true_labels, predicted_labels, num_classes, save_dir, show):
     
     """
         Generate and plot a confusion matrix.
@@ -121,7 +89,7 @@ def confusion_matrix(true_labels, predicted_labels, num_classes, save_dir, show)
     plt.yticks(np.arange(num_classes))
     plt.title('Confusion Matrix')
     plt.colorbar().set_label('Percentage (%)')
-    plt.savefig(save_dir)
+    plt.savefig(save_dir + '/confusion_matrix.png')
 
     # Display confusion matrix
     if show:
@@ -163,7 +131,7 @@ def training_progress(epochs, accuracies, losses, save_dir, show):
 
     fig.tight_layout()
     plt.title('Accuracy and Average Loss per Epoch')
-    plt.savefig(save_dir)
+    plt.savefig(save_dir + '/training_progress.png')
 
     # Display plot
     if show:

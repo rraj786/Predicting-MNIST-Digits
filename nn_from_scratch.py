@@ -1,238 +1,193 @@
 '''
     The following script builds, trains, and evaluates a neural network from scratch 
-    to classify images in handwritten digits in the MNIST dataset.
+    to classify handwritten digits in the MNIST dataset.
     Author: Rohit Rajagopal
 '''
 
 
 import numpy as np
-from keras.datasets import mnist
-import os
+from tqdm import tqdm
 
 
 class NeuralNetwork:
 
     # Ensure layers are added sequentially or the network will need to be rebuilt from scratch
-    # Error used is Cross Entropy loss as this is a multi-classification problem with a softmax 
+    # Error used is Cross-Entropy loss as this is a multi-classification problem with a softmax 
     # output activation function
     # Needs at least 1 hidden layer to work
     # Data must be reshaped such that each row is one example
 
     def __init__(self):
 
-        # Intiialise all parameters in the neural network
-        self.input_size = 0
-        self.input_layer = []
-        self.hidden_layers = []
-        self.activations = []
-        self.output_layer = []
+        # Intiialise parameters in the neural network
+        self.hidden_layer_sizes = []
         self.weights = []
         self.biases = []
-        self.rmsweights = []
-        self.rmsbiases = []
+        self.activations = []
+        self.training_accuracies = []
+        self.training_losses = []
+        self.epsilon = 1e-12
 
     def add_input_layer(self, input_size):
         
-        # Initialise number of neurons in input layer
+        # Initialise number of values in input layer
         self.input_size = input_size
-    
 
     def add_hidden_layer(self, hidden_size):
 
-        # Append new arrays to hidden layer, activations and biases
-        self.hidden_layers.append(np.zeros(hidden_size))
-        self.activations.append(np.zeros(hidden_size))
-        self.biases.append(np.zeros(hidden_size))
+        self.hidden_layer_sizes.append(hidden_size)
 
-        # Add weights based on layers already added to neural network (He intialisation for ReLU activation function)
-        if len(self.hidden_layers) == 1:
-            self.weights.append(np.random.rand(hidden_size, self.input_size) * np.sqrt(2 / self.input_size))
+        # For first hidden layer, consider weights and biases between input layer and itself (Glorot initialisation)
+        if len(self.hidden_layer_sizes) == 1:
+            bound = np.sqrt(6 / (self.input_size + hidden_size))
+            self.weights.append(np.random.uniform(-bound, bound, size = (self.input_size, hidden_size)))
+            self.biases.append(np.zeros([1, hidden_size]))
+
+        # For other hidden layers (Glorot initialisation)
         else:
-            self.weights.append(np.random.rand(hidden_size, len(self.hidden_layers[-2])) * np.sqrt(2 / len(self.hidden_layers[-2])))
-    
+            bound = np.sqrt(6 / (self.hidden_layer_sizes[-2] + hidden_size))
+            self.weights.append(np.random.uniform(-bound, bound, size = (self.hidden_layer_sizes[-2], hidden_size)))
+            self.biases.append(np.zeros([1, hidden_size]))
 
     def add_output_layer(self, output_size):
 
-        # Append new arrays to output layer, activations and biases
-        self.output_layer = np.zeros(output_size)
-        self.activations.append(np.zeros(output_size))
-        self.biases.append(np.zeros(output_size))
-
-        # Add weights for final layer (Xavier initialisation for Softmax activation function)
-        self.weights.append(np.random.rand(output_size, len(self.hidden_layers[-1])) * np.sqrt(1 / len(self.hidden_layers[-1])))
-
+        # Add weights and biases for output layer (Glorot initialisation)
+        bound = np.sqrt(6 / (self.hidden_layer_sizes[-1] + output_size))
+        self.weights.append(np.random.uniform(-bound, bound, size = (self.hidden_layer_sizes[-1], output_size)))
+        self.biases.append(np.zeros([1, output_size]))
 
     def forward_propagation(self):
         
-        # Calculate activated neurons for each of the hidden layer using the ReLU activation function
-        for i in range(len(self.hidden_layers)):
-            if i == 0:
-                self.hidden_layers[i] = np.dot(self.weights[i], self.input_layer)
-                self.activations[i] = NeuralNetwork.relu(self.hidden_layers[i])
+        # Calculate activated neurons for each of the hidden layers using the ReLU activation function
+        for layer in range(len(self.hidden_layer_sizes)):
+            if layer == 0:
+                self.hidden_layers = [np.dot(self.input_layer, self.weights[layer]) + self.biases[layer]]
             else:
-                self.hidden_layers[i] = np.dot(self.weights[i], self.activations[i - 1])
-                self.activations[i] = NeuralNetwork.relu(self.hidden_layers[i])
+                self.hidden_layers.append(np.dot(self.activations[-1], self.weights[layer]) + self.biases[layer])
+            
+            self.activations.append(NeuralNetwork.relu(self.hidden_layers[layer]))
 
         # Calculate the final output using the Softmax activation function
-        self.output_layer = np.dot(self.weights[-1], self.activations[-2])
-        self.activations[-1] = NeuralNetwork.softmax(self.output_layer)
+        self.output_layer = np.dot(self.activations[-1], self.weights[-1]) + self.biases[-1]
+        self.activations.append(NeuralNetwork.softmax(self.output_layer))
 
-    
-    def backward_propagation(self, label_vector, batch_size, learning_rate, decay_rate):
+    def backward_propagation(self, label_vector, learning_rate, decay_rate):
 
         # Find the difference between model output and actual labels
         delta_output = self.activations[-1] - label_vector
 
         # Update weights and biases in each layer, working backwards from the output
-        for i in range(len(self.weights) - 1, -1, -1):
-            dW_list = []
-            dB_list = []
-            
+        for i in range(len(self.hidden_layer_sizes), -1, -1):
+            dW = np.zeros_like(self.weights[i])
+                                               
             # Consider output layer
-            if i == len(self.weights) - 1:
-
-                # Find output weights and biases gradients for each example in the batch and compute the average 
-                for j in range(batch_size):
-                    dW_list.append(np.outer(delta_output[:, j], self.activations[i - 1][:, j]))
-                    dB_list.append(delta_output[:, j])
-
-                delta_hidden = delta_output
+            if i == len(self.hidden_layer_sizes):
+                dW = np.dot(self.activations[i - 1].T, delta_output)
+                dB = np.sum(delta_output, axis = 0, keepdims = True)
+                delta_hidden = np.dot(delta_output, self.weights[i].T) * (self.hidden_layers[i - 1] > 0)    # ReLU Derivative
 
             # Consider input layer
             elif i == 0:
-                
-                # Find input weights and biases gradients for each example in the batch and compute the average 
-                delta_hidden = np.dot(self.weights[i + 1].T, delta_hidden) * (self.hidden_layers[i] > 0)
-                for j in range(batch_size):
-                    dW_list.append(np.outer(delta_hidden[:, j], self.input_layer[:, j]))
-                    dB_list.append(delta_hidden[:, j])
+                dW = np.dot(self.input_layer.T, delta_hidden)
+                dB = np.sum(delta_hidden, axis = 0, keepdims = True)
 
             # Consider hidden layers
             else:
-
-                # Find hidden weights and biases gradients for each example in the batch and compute the average 
-                delta_hidden = np.dot(self.weights[i + 1].T, delta_hidden) * (self.hidden_layers[i] > 0)
-                for j in range(batch_size):
-                    dW_list.append(np.outer(delta_hidden[:, j], self.activations[i - 1][:, j]))
-                    dB_list.append(delta_hidden[:, j])
+                dW = np.dot(self.activations[i - 1].T, delta_hidden)
+                dB = np.sum(delta_hidden, axis = 0, keepdims = True)
+                delta_hidden = np.dot(delta_hidden, self.weights[i].T) * (self.hidden_layers[i - 1] > 0)    # ReLU Derivative
 
             # Update weights and biases
-            dW = np.mean(dW_list, axis = 0)
-            dB = np.mean(dB_list, axis = 0)
             update_weights, update_biases = NeuralNetwork.rmsprop(self, i, dW, dB, learning_rate, decay_rate)
             self.weights[i] -= update_weights
             self.biases[i] -= update_biases
 
-    
     def rmsprop(self, layer, gradient_weights, gradient_biases, learning_rate, decay_rate):
-
-        epsilon = 1e-8
 
         # Update exponentially decaying average of squared gradients for weights and biases
         self.rmsweights[layer] = decay_rate * self.rmsweights[layer] + (1 - decay_rate) * gradient_weights ** 2
         self.rmsbiases[layer] = decay_rate * self.rmsbiases[layer] + (1 - decay_rate) * gradient_biases ** 2
 
         # Update weights and biases using RMSprop update rule
-        update_weights = (learning_rate / (np.sqrt(self.rmsweights[layer]) + epsilon)) * gradient_weights
-        update_biases = (learning_rate / (np.sqrt(self.rmsbiases[layer]) + epsilon)) * gradient_biases
+        update_weights = learning_rate * (gradient_weights / (np.sqrt(self.rmsweights[layer]) + self.epsilon))
+        update_biases = learning_rate * (gradient_biases / (np.sqrt(self.rmsbiases[layer]) + self.epsilon))
 
         return update_weights, update_biases
 
-
-    def train_network(self, training_data, labels, batch_size, learning_rate, decay_rate, epochs):
+    def train_network(self, x_train, y_train, batch_size, learning_rate, decay_rate, epochs):
 
         # Initialise RMSProp decaying averages
-        self.rmsweights = [np.zeros_like(weights) for weights in self.weights]
-        self.rmsbiases = [np.zeros_like(biases) for biases in self.biases]
+        self.rmsweights = [np.zeros_like(weight) for weight in self.weights]
+        self.rmsbiases = [np.zeros_like(bias) for bias in self.biases]
 
         # Iterate through each batch in the training set and repeat based on the number of epochs
         for epoch in range(epochs):
-            
-            print("Commencing Epoch:", epoch + 1)
+            self.training_accuracies.append(0)
+            self.training_losses.append(0)
+            print("\nCommencing Epoch:", str(epoch + 1) + "/" + str(epochs))
 
             # Shuffle training data
-            indices = np.arange(training_data.shape[0])
+            indices = np.arange(x_train.shape[0])
             np.random.shuffle(indices)
-            training_data = training_data[indices]
-            labels = labels[indices]
+            x_train = x_train[indices]
+            y_train = y_train[indices]
 
             # Iterate through each batch
-            for batch in range(0, len(indices), batch_size):
-                x_batch = training_data[batch:batch + batch_size]
-                y_batch = labels[batch:batch + batch_size]
-
-                # Create one-hot encoded matrix representation of labels
-                y_batch_vector = np.eye(self.output_layer.shape[0])[y_batch].T
+            for batch in tqdm(range(0, len(indices), batch_size), position = 0, leave = True):
+                x_batch = x_train[batch:batch + batch_size]
+                y_batch = y_train[batch:batch + batch_size]
 
                 # Pass data into neural network
-                self.input_layer = x_batch.T
+                self.input_layer = x_batch
                 self.forward_propagation()
-                self.backward_propagation(y_batch_vector, batch_size, learning_rate, decay_rate)
-        pass
+                self.backward_propagation(y_batch, learning_rate, decay_rate)
 
+                # Find accuracy (ratio of predicted correct to number of examples)
+                y_pred = np.argmax(self.activations[-1], axis = 1)
+                y_labels = np.argmax(y_batch, axis = 1)
+                self.training_accuracies[epoch] += np.count_nonzero((y_pred - y_labels) == 0)
+
+                # Find cross entropy loss
+                y_pred_conf = np.clip(self.activations[-1], self.epsilon, 1)    # Ensure log(0) doesn't result in an error
+                self.training_losses[epoch] += np.sum(-np.sum(y_batch * np.log(y_pred_conf), axis = 1))
+
+            # Print accuracy and loss metrics at the end of each epoch
+            self.training_accuracies[epoch] = self.training_accuracies[epoch] / len(indices)
+            print("Accuracy: %.4f" % self.training_accuracies[epoch])
+            
+            self.training_losses[epoch] = self.training_losses[epoch] / len(indices)
+            print("Average Cross-Entropy Loss: %.4f" % self.training_losses[epoch])
 
     def predict(self, data):
+        
+        # Apply forward propagation using updated model weights
+        self.input_layer = data
+        self.forward_propagation()
 
-        pass
+        # Extract confidence scores of predicted labels
+        confidence_scores = np.max(self.activations[-1], axis = 1)
 
+        # Extract the predicted labels
+        y_pred = np.argmax(self.activations[-1], axis = 1)
+
+        return confidence_scores, y_pred
 
     def softmax(inactive):
+
+        # Subtract the maximum value for numerical stability
+        inactive -= np.max(inactive, axis = 1, keepdims = True)
         
         # Find exponential scores for each element
-        exp_scores = np.exp(inactive - np.max(inactive, axis = 0, keepdims = True))
+        exp_scores = np.exp(inactive)
 
         # Calculate probability distribution
-        activated = exp_scores / np.sum(exp_scores, axis = 0, keepdims = True)
+        activated = exp_scores / np.sum(exp_scores, axis = 1, keepdims = True)
 
         return activated
         
-
     def relu(inactive): 
 
         # Find the maximum of 0 and each element
         activated = np.maximum(0, inactive)
         
         return activated
-
-
-
-
-(train_X, train_y), (test_X, test_y) = mnist.load_data()
-train_X = np.reshape(train_X, (train_X.shape[0], train_X.shape[1] ** 2))/255
-test_X = np.reshape(test_X, (test_X.shape[0], test_X.shape[1] ** 2))/255
-
-new = NeuralNetwork()
-new.add_input_layer(784)
-new.add_hidden_layer(256)
-new.add_hidden_layer(128)
-new.add_output_layer(10)
-new.train_network(train_X, train_y, 32, 0.01, 0.9, 10)
-
-
-# add all layers
-layer_1_size = 2
-layer_1_weights = np.random.rand(layer_1_size, len(test_vars))
-layer_2_weights = np.random.rand(n_labels, layer_1_size)
-bias_1 = np.zeros(layer_1_size)
-bias_2 = np.zeros(n_labels)
-
-# # forward propagation
-# layer_1 = np.dot(layer_1_weights, test_vars) + bias_1
-# layer_1_neurons = np.maximum(0, layer_1)
-# layer_2 = np.dot(layer_2_weights, layer_1_neurons) + bias_2
-# output = softmax(layer_2)
-
-# # create one hot encoded comparison set
-
-# # backward propagation (use cross entropy loss)
-# learning_rate = 0.05
-# delta_output = output - comp
-# layer_2_weights -= learning_rate * np.outer(delta_output, layer_1_neurons)
-# bias_2 -= learning_rate * delta_output
-# delta_hidden = np.dot(layer_2_weights.T, delta_output) * (layer_1_neurons > 0)
-# layer_1_weights -= learning_rate * np.outer(delta_hidden, test_vars)
-# bias_1 -= learning_rate * delta_hidden
-
-
-
-
