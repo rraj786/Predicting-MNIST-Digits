@@ -1,6 +1,6 @@
 '''
     The following script contains functions to compute various metrics using model outputs
-    and evaluate their performances.
+    and evaluate performance.
     Author: Rohit Rajagopal
 '''
 
@@ -14,16 +14,16 @@ def classification_report_ad(true_labels, predicted_labels, save_dir):
 
     """
         Generate a classification report of key metrics for model evaluation.
-
-        Inputs:
-            - true_labels: A 1D array-like of true class labels
-            - predicted_labels: A 1D array-like of predicted class labels
-            - save_dir: A string to indicate directory to save classification report
-
-        Outputs:
+    
+        Args:
+            - true_labels (array-like): A 1D array of true class labels.
+            - predicted_labels (array-like): A 1D array of predicted class labels.
+            - save_dir (str): Directory to save the classification report.
+    
+        Returns:
             None
     """
-
+    
     # Generate classification report for micro and macro-averages
     report = classification_report(true_labels, predicted_labels, digits = 4)
 
@@ -38,13 +38,13 @@ def confidence_distribution(output_probabilities, save_dir, show):
 
     """
         Plot the distribution of confidence scores for predicted labels.
-
-        Inputs:
-            - output_probabilities: A 1D array-like containing confidence scores for predicted labels
-            - save_dir: A string to indicate directory to save plot
-            - show: Boolean to indicate whether to display plot
-
-        Outputs:
+    
+        Args:
+            - output_probabilities (array-like): A 1D array containing confidence scores for predicted labels.
+            - save_dir (str): Directory to save the plot.
+            - show (bool): Whether to display the plot or not.
+    
+        Returns:
             None
     """
 
@@ -65,15 +65,15 @@ def confusion_matrix_ad(true_labels, predicted_labels, num_classes, save_dir, sh
     
     """
         Generate and plot a confusion matrix.
-
-        Inputs:
-            - true_labels: A 1D array-like of true class labels
-            - predicted_labels: A 1D array-like of predicted class labels
-            - num_classes: The number of classes in the classification task
-            - save_dir: A string to indicate directory to save confusion matrix
-            - show: Boolean to indicate whether to display confusion matrix
-
-        Outputs:
+    
+        Args:
+            - true_labels (array-like): A 1D array of true class labels.
+            - predicted_labels (array-like): A 1D array of predicted class labels.
+            - num_classes (int): Number of classes in the classification task.
+            - save_dir (str): Directory to save the confusion matrix.
+            - show (bool): Whether to display the confusion matrix or not.
+    
+        Returns:
             None
     """
 
@@ -101,18 +101,18 @@ def training_progress(epochs, accuracies, losses, save_dir, show):
 
     """
         Plot training progress over epochs.
-
-        Inputs:
-            - epochs: A list of epoch numbers
-            - accuracies: A list of accuracy values corresponding to each epoch
-            - losses: A list of loss values corresponding to each epoch
-            - save_dir: A string to indicate directory to save plot
-            - show: Boolean to indicate whether to display plot
-
-        Outputs:
+    
+        Args:
+            - epochs (list): List of epoch numbers.
+            - accuracies (list): List of accuracy values corresponding to each epoch.
+            - losses (list): List of loss values corresponding to each epoch.
+            - save_dir (str): Directory to save the plot.
+            - show (bool): Whether to display the plot or not.
+    
+        Returns:
             None
     """
-
+    
     fig, ax1 = plt.subplots()
 
     # Plot accuracies
