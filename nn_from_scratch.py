@@ -296,13 +296,13 @@ class NeuralNetwork:
     def softmax(inactive):
         
         """
-        Applies the softmax activation function to the input data.
-
-        Args:
-            - inactive (array-like): Input data.
-
-        Returns:
-            - activated (array-like): Softmax activated data.
+            Applies the softmax activation function to the input data.
+    
+            Args:
+                - inactive (array-like): Input data.
+    
+            Returns:
+                - activated (array-like): Softmax activated data.
         """
         
         # Subtract the maximum value for numerical stability
@@ -320,13 +320,13 @@ class NeuralNetwork:
     def relu(inactive): 
         
         """
-        Applies the ReLU activation function to the input data.
-
-        Args:
-            - inactive (array-like): Input data.
-
-        Returns:
-            - activated(array-like): ReLU activated data.
+            Applies the ReLU activation function to the input data.
+    
+            Args:
+                - inactive (array-like): Input data.
+    
+            Returns:
+                - activated(array-like): ReLU activated data.
         """
         
         # Find the maximum of 0 and each element
