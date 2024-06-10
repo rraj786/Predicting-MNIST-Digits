@@ -1,8 +1,8 @@
-'''
-    The following script builds, trains, and evaluates a neural network from scratch 
-    to classify handwritten digits in the MNIST dataset.
+"""
+    The following script contains the NeuralNetwork class to build, train, and evaluate a 
+    neural network from scratch.
     Author: Rohit Rajagopal
-'''
+"""
 
 
 import numpy as np
@@ -11,13 +11,40 @@ from tqdm import tqdm
 
 class NeuralNetwork:
 
-    # Ensure layers are added sequentially or the network will need to be rebuilt from scratch
-    # Error used is Cross-Entropy loss as this is a multi-classification problem with a softmax 
-    # output activation function
-    # Needs at least 1 hidden layer to work
-    # Data must be reshaped such that each row is one example
+    """
+        A class for building, training, and evaluating a neural network based on user 
+        inputs.
+
+        Attributes:
+            - hidden_layer_sizes (list): Sizes of the hidden layers.
+            - weights (list): Weights of the neural network.
+            - biases (list): Biases of the neural network.
+            - activations (list): Activations of the neural network layers.
+            - training_accuracies (list): Training accuracies per epoch.
+            - training_losses (list): Training losses per epoch.
+            - epsilon (float): Small value to avoid mathematical inoperations.
+            
+        Notes:
+            - Ensure layers are added sequentially or the network will need to be rebuilt from scratch.
+            - Loss is calculated using the Cross-Entropy function as this network is standardized for
+              a multi-classification problem with a Softmax activation function in the output layer.
+            - ReLU activation function used in hidden layers.
+            - Requires at least one hidden layer to function correctly. 
+            - Input data must be reshaped such that each row is one training example and the labels 
+              are one-hot encoded.
+    """
 
     def __init__(self):
+        
+        """
+            Initializes the neural network with default parameters.
+            
+            Args:
+                None
+                
+            Returns:
+                None
+        """
 
         # Intiialise parameters in the neural network
         self.hidden_layer_sizes = []
@@ -30,10 +57,30 @@ class NeuralNetwork:
 
     def add_input_layer(self, input_size):
         
+        """
+            Adds an input layer to the neural network.
+
+            Args:
+                - input_size (int): Number of neurons in the input layer.
+
+            Returns:
+                None
+        """
+        
         # Initialise number of values in input layer
         self.input_size = input_size
 
     def add_hidden_layer(self, hidden_size):
+        
+        """
+            Adds a hidden layer to the neural network.
+
+            Args:
+                - hidden_size (int): Number of neurons in the hidden layer.
+
+            Returns:
+                None
+        """
 
         self.hidden_layer_sizes.append(hidden_size)
 
@@ -50,13 +97,33 @@ class NeuralNetwork:
             self.biases.append(np.zeros([1, hidden_size]))
 
     def add_output_layer(self, output_size):
+        
+        """
+            Adds an output layer to the neural network.
 
+            Args:
+                - output_size (int): Number of neurons in the output layer.
+
+            Returns:
+                None
+        """
+        
         # Add weights and biases for output layer (Glorot initialisation)
         bound = np.sqrt(6 / (self.hidden_layer_sizes[-1] + output_size))
         self.weights.append(np.random.uniform(-bound, bound, size = (self.hidden_layer_sizes[-1], output_size)))
         self.biases.append(np.zeros([1, output_size]))
 
     def forward_propagation(self):
+        
+        """
+            Performs forward propagation through the neural network.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         
         # Calculate activated neurons for each of the hidden layers using the ReLU activation function
         for layer in range(len(self.hidden_layer_sizes)):
@@ -72,7 +139,19 @@ class NeuralNetwork:
         self.activations.append(NeuralNetwork.softmax(self.output_layer))
 
     def backward_propagation(self, label_vector, learning_rate, decay_rate):
+        
+        """
+            Performs backward propagation and updates the neural network weights and biases.
 
+            Args:
+                - label_vector (array-like): One-hot encoded true class labels.
+                - learning_rate (float): Learning rate for weight updates.
+                - decay_rate (float): Decay rate for RMSprop.
+
+            Returns:
+                None
+        """
+        
         # Find the difference between model output and actual labels
         delta_output = self.activations[-1] - label_vector
 
@@ -104,6 +183,21 @@ class NeuralNetwork:
 
     def rmsprop(self, layer, gradient_weights, gradient_biases, learning_rate, decay_rate):
 
+        """
+            Applies RMSprop optimization to update the neural network parameters.
+
+            Args:
+                - layer (int): Layer index to update.
+                - gradient_weights (array-like): Gradient of the weights.
+                - gradient_biases (array-like): Gradient of the biases.
+                - learning_rate (float): Learning rate for weight updates.
+                - decay_rate (float): Decay rate for RMSprop.
+
+            Returns:
+                - update_weights (array-like): Amount to reduce weights for the specified layer.
+                - update_biases (array-like): Amount to reduce biases for the specified layer.
+        """
+        
         # Update exponentially decaying average of squared gradients for weights and biases
         self.rmsweights[layer] = decay_rate * self.rmsweights[layer] + (1 - decay_rate) * gradient_weights ** 2
         self.rmsbiases[layer] = decay_rate * self.rmsbiases[layer] + (1 - decay_rate) * gradient_biases ** 2
@@ -115,7 +209,22 @@ class NeuralNetwork:
         return update_weights, update_biases
 
     def train_network(self, x_train, y_train, batch_size, learning_rate, decay_rate, epochs):
+        
+        """
+            Trains the neural network using the given training data.
 
+            Args:
+                - x_train (array-like): Training data features.
+                - y_train (array-like): Training data labels.
+                - batch_size (int): Size of the training batches.
+                - learning_rate (float): Learning rate for weight updates.
+                - decay_rate (float): Decay rate for RMSprop.
+                - epochs (int): Number of training epochs.
+
+            Returns:
+                None
+        """
+        
         # Initialise RMSProp decaying averages
         self.rmsweights = [np.zeros_like(weight) for weight in self.weights]
         self.rmsbiases = [np.zeros_like(bias) for bias in self.biases]
@@ -160,6 +269,17 @@ class NeuralNetwork:
 
     def predict(self, data):
         
+        """
+            Predicts labels for the given data.
+
+            Args:
+                - data (array-like): Data to predict labels for.
+
+            Returns:
+                - confidence_scores (array-like): Confidence scores/probabilties for each predicted class.
+                - y_pred (array-like): Predicted labels.
+        """
+        
         # Apply forward propagation using updated model weights
         self.input_layer = data
         self.forward_propagation()
@@ -172,8 +292,19 @@ class NeuralNetwork:
 
         return confidence_scores, y_pred
 
+    @staticmethod
     def softmax(inactive):
+        
+        """
+        Applies the softmax activation function to the input data.
 
+        Args:
+            - inactive (array-like): Input data.
+
+        Returns:
+            - activated (array-like): Softmax activated data.
+        """
+        
         # Subtract the maximum value for numerical stability
         inactive -= np.max(inactive, axis = 1, keepdims = True)
         
@@ -185,8 +316,19 @@ class NeuralNetwork:
 
         return activated
         
+    @staticmethod
     def relu(inactive): 
+        
+        """
+        Applies the ReLU activation function to the input data.
 
+        Args:
+            - inactive (array-like): Input data.
+
+        Returns:
+            - activated(array-like): ReLU activated data.
+        """
+        
         # Find the maximum of 0 and each element
         activated = np.maximum(0, inactive)
         
