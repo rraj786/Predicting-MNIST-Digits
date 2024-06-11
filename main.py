@@ -84,14 +84,14 @@ if not os.path.exists(tflow_dir):
 # Display and compare key metrics for both models based on predictions
 epoch_list = list(range(1, epochs + 1))
 
-training_progress(epoch_list, model_scratch.training_accuracies, model_scratch.training_losses, scratch_dir, False)
-training_progress(epoch_list, model_tflow.training_accuracies, model_tflow.training_losses, tflow_dir, False)
+training_progress(epoch_list, model_scratch.training_accuracies, model_scratch.training_losses, scratch_dir, True)
+training_progress(epoch_list, model_tflow.training_accuracies, model_tflow.training_losses, tflow_dir, True)
 
-confusion_matrix_ad(y_test_lab, y_pred_scratch, num_classes, scratch_dir, False)
-confusion_matrix_ad(y_test_lab, y_pred_tflow, num_classes, tflow_dir, False)
+confusion_matrix_ad(y_test_lab, y_pred_scratch, num_classes, scratch_dir, True)
+confusion_matrix_ad(y_test_lab, y_pred_tflow, num_classes, tflow_dir, True)
 
-confidence_distribution(y_pred_scratch_scores, scratch_dir, False)
-confidence_distribution(y_pred_tflow_scores, tflow_dir, False)
+confidence_distribution(y_pred_scratch_scores, scratch_dir, True)
+confidence_distribution(y_pred_tflow_scores, tflow_dir, True)
 
 classification_report_ad(y_test_lab, y_pred_scratch, scratch_dir)
 classification_report_ad(y_test_lab, y_pred_tflow, tflow_dir)

@@ -333,3 +333,4 @@ class NeuralNetwork:
         activated = np.maximum(0, inactive)
         
         return activated
+    
