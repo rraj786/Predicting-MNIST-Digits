@@ -1,6 +1,6 @@
 # Predicting MNIST Digits
 
-This project showcases a custom implementation of a neural network built from scratch in Python, focusing on its performance comparison with an equivalent TensorFlow model on the MNIST dataset. The goal is to understand the fundamentals of a neural network whilst achieving a high-level of performance dictated by various metrics.
+This project showcases a custom implementation of a neural network built from scratch (using only NumPy) in Python, focusing on its performance comparison with an equivalent TensorFlow model on the MNIST dataset. The goal is to understand the fundamentals of a neural network whilst achieving a high-level of performance dictated by various metrics.
 
 ## Installation
 
